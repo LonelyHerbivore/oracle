@@ -51,7 +51,7 @@ import {
 import { normalizeProjectSourcesUrl } from "../projectSources/url.js";
 import { buildProjectSourcesUploadPlan, diffAddedProjectSources } from "../projectSources/plan.js";
 import type { ProjectSourcesRequest, ProjectSourcesResult } from "../projectSources/types.js";
-import { shouldSyncBrowserCookies } from "./policies.js";
+import { CHROME_COOKIE_SYNC_WARNING, shouldSyncBrowserCookies } from "./policies.js";
 
 type BrowserChrome = LaunchedChrome & { host?: string };
 
@@ -341,9 +341,12 @@ async function applyProjectSourcesCookies({
     logger(
       manualLogin
         ? "Skipping Chrome cookie sync (--browser-manual-login enabled); reuse the opened profile after signing in."
-        : "Skipping Chrome cookie sync (--browser-no-cookie-sync)",
+        : "Skipping Chrome cookie copy (disabled by default; use --browser-cookie-sync to opt in).",
     );
     return 0;
+  }
+  if (!config.inlineCookies) {
+    logger(CHROME_COOKIE_SYNC_WARNING);
   }
   const cookieCount = await syncCookies(network, config.url, config.chromeProfile, logger, {
     allowErrors: config.allowCookieErrors ?? false,

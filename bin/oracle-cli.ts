@@ -138,6 +138,7 @@ interface CliOptions extends OptionValues {
   browserProfileLockTimeout?: string;
   browserMaxConcurrentTabs?: string;
   browserCookieWait?: string;
+  browserCookieSync?: boolean;
   browserNoCookieSync?: boolean;
   browserInlineCookiesFile?: string;
   browserCookieNames?: string;
@@ -763,6 +764,12 @@ program
       "Load inline cookies from file (JSON or base64 JSON).",
     ).hideHelp(),
   )
+  .addOption(
+    new Option(
+      "--browser-cookie-sync",
+      "Copy cookies from live Chrome (opt-in; token rotation may invalidate that session).",
+    ),
+  )
   .addOption(new Option("--browser-no-cookie-sync", "Skip copying cookies from Chrome.").hideHelp())
   .addOption(
     new Option(
@@ -962,6 +969,11 @@ program
     "--manual-login-profile-dir <path>",
     "Chrome profile directory for manual login (default ~/.oracle/browser-profile).",
   )
+  .option(
+    "--browser-cookie-sync",
+    "Copy cookies from this host's live Chrome profile instead of using the dedicated profile.",
+    false,
+  )
   .action(async (commandOptions) => {
     const { serveRemote } = await import("../src/remote/server.js");
     await serveRemote({
@@ -970,6 +982,7 @@ program
       token: commandOptions.token,
       manualLoginDefault: commandOptions.manualLogin,
       manualLoginProfileDir: commandOptions.manualLoginProfileDir,
+      cookieSyncDefault: commandOptions.browserCookieSync,
     });
   });
 
@@ -1000,6 +1013,10 @@ function addProjectSourcesCommonOptions(command: Command): Command {
     .option("--browser-cookie-path <path>", "Explicit Chrome cookie DB path.")
     .option("--browser-inline-cookies <json>", "Inline ChatGPT cookies JSON.")
     .option("--browser-inline-cookies-file <path>", "File containing ChatGPT cookies JSON.")
+    .option(
+      "--browser-cookie-sync",
+      "Copy cookies from live Chrome (opt-in; token rotation may invalidate that session).",
+    )
     .option("--browser-no-cookie-sync", "Skip copying cookies from Chrome.")
     .option("--browser-keep-browser", "Keep Chrome running after completion.", false)
     .option("--browser-hide-window", "Hide Chrome window after launch on macOS.", false)
@@ -2891,6 +2908,10 @@ function printDebugHelp(cliName: string): void {
     [
       "--browser-cookie-wait <ms|s|m>",
       "Wait before retrying cookie sync when Chrome cookies are empty or locked.",
+    ],
+    [
+      "--browser-cookie-sync",
+      "Copy cookies from live Chrome (opt-in; token rotation may invalidate that session).",
     ],
     ["--browser-no-cookie-sync", "Skip copying cookies from your main profile."],
     [

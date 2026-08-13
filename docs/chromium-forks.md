@@ -1,6 +1,6 @@
 # Chromium-based browsers (Chromium, Edge, Brave variants)
 
-Oracle’s browser engine assumes Google Chrome by default: it launches Chrome via `chrome-launcher` and copies cookies from Chrome’s profile/keychain so you stay signed in to ChatGPT. Chromium, Microsoft Edge, and other forks ship the same DevTools protocol, but they keep the executable and cookie store in different locations. Use the knobs below to point Oracle at those assets explicitly.
+Oracle’s browser engine assumes Google Chrome by default and launches it via `chrome-launcher`. Cookie copying from Chrome’s profile/keychain is an explicit opt-in because cloning a live ChatGPT session can invalidate the interactive browser when tokens rotate. Chromium, Microsoft Edge, and other forks ship the same DevTools protocol, but they keep the executable and cookie store in different locations. Prefer a dedicated `--browser-manual-login` profile; if you intentionally copy cookies, use `--browser-cookie-sync` with the knobs below.
 
 ## 1. Point Oracle at the right executable
 
@@ -35,6 +35,7 @@ Set the new `--browser-cookie-path` flag (or `browser.chromeCookiePath` in confi
 
 ```bash
 oracle --engine browser \
+  --browser-cookie-sync \
   --browser-chrome-path "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge" \
   --browser-cookie-path "$HOME/Library/Application Support/Microsoft Edge/Profile 1/Cookies" \
   --prompt "Summarize the release notes"
@@ -45,6 +46,7 @@ Config example (JSON5):
 ```json5
 {
   browser: {
+    cookieSync: true,
     chromePath: "/usr/bin/chromium",
     chromeCookiePath: "/home/you/.config/chromium/Default/Cookies",
     chromeProfile: null,

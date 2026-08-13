@@ -199,7 +199,7 @@ describe("summarizeModelRunsForConsult", () => {
     });
   });
 
-  test("defaults MCP browser consults to manual login on Windows", () => {
+  test("defaults MCP browser consults to no Chrome cookie copy", () => {
     const config = buildConsultBrowserConfig({
       userConfig: {},
       env: {},
@@ -208,7 +208,18 @@ describe("summarizeModelRunsForConsult", () => {
     });
 
     expect(config.manualLogin).toBe(process.platform === "win32");
-    expect(config.cookieSync).toBe(process.platform !== "win32");
+    expect(config.cookieSync).toBe(false);
+  });
+
+  test("honors explicit cookie sync for ordinary MCP browser consults", () => {
+    const config = buildConsultBrowserConfig({
+      userConfig: { browser: { cookieSync: true } },
+      env: {},
+      runModel: "gpt-5.5-pro",
+      inputModel: "gpt-5.5-pro",
+    });
+
+    expect(config).toMatchObject({ manualLogin: false, cookieSync: true });
   });
 
   test("honors explicit cookie sync for MCP manual-login consults", () => {

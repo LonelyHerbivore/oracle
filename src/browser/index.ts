@@ -109,7 +109,7 @@ import {
   resolveManualLoginWaitMs,
 } from "./manualLoginProfile.js";
 import { describeBrowserControlPlan, formatBrowserControlPlan } from "./controlPlan.js";
-import { shouldSyncBrowserCookies } from "./policies.js";
+import { CHROME_COOKIE_SYNC_WARNING, shouldSyncBrowserCookies } from "./policies.js";
 import {
   createConversationUrlMonitor,
   type ConversationUrlMonitor,
@@ -1265,6 +1265,7 @@ export async function runBrowserMode(options: BrowserRunOptions): Promise<Browse
         );
       }
       if (!config.inlineCookies) {
+        logger(CHROME_COOKIE_SYNC_WARNING);
         logger(
           "Heads-up: macOS may prompt for your Keychain password to read Chrome cookies; use --copy or --render for manual flow.",
         );
@@ -1296,7 +1297,7 @@ export async function runBrowserMode(options: BrowserRunOptions): Promise<Browse
       logger(
         manualLogin
           ? "Skipping Chrome cookie sync (--browser-manual-login enabled); reuse the opened profile after signing in."
-          : "Skipping Chrome cookie sync (--browser-no-cookie-sync)",
+          : "Skipping Chrome cookie copy (disabled by default; use --browser-cookie-sync to opt in).",
       );
     }
     await clearStaleChatGptConversationCookies(Network, Target, logger, {

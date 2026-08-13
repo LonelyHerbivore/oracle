@@ -42,6 +42,7 @@ describe("remote browser service", () => {
         {
           runBrowser: async (options) => {
             runLog.push(options.prompt);
+            expect(options.config?.cookieSync).toBe(false);
             expect(options.sessionId).toBe("remote-session-id");
             expect(options.followUpPrompts).toEqual(["follow up"]);
             expect(options.attachments).toHaveLength(1);
@@ -167,6 +168,7 @@ describe("remote browser service", () => {
               manualLogin: true,
               manualLoginProfileDir,
               keepBrowser: true,
+              cookieSync: false,
             });
             cleanupPolicies.push(options.closeOwnedTabOnComplete);
             return {

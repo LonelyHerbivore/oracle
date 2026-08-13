@@ -41,7 +41,7 @@ import {
   type TargetInfoLite,
 } from "./reattachHelpers.js";
 import { waitForDeepResearchCompletion } from "./actions/deepResearch.js";
-import { shouldSyncBrowserCookies } from "./policies.js";
+import { CHROME_COOKIE_SYNC_WARNING, shouldSyncBrowserCookies } from "./policies.js";
 
 export interface ReattachDeps {
   listTargets?: () => Promise<TargetInfoLite[]>;
@@ -338,6 +338,9 @@ async function resumeBrowserSessionViaNewChrome(
   }
   let appliedCookies = 0;
   if (shouldSyncBrowserCookies(resolved, { manualLogin })) {
+    if (!resolved.inlineCookies) {
+      logger(CHROME_COOKIE_SYNC_WARNING);
+    }
     const sync = deps.syncCookies ?? syncCookies;
     try {
       appliedCookies = await sync(Network, resolved.url, resolved.chromeProfile, logger, {

@@ -28,6 +28,7 @@ export interface BrowserDefaultsOptions {
   browserAutoReattachInterval?: string | number;
   browserAutoReattachTimeout?: string | number;
   browserCookieWait?: string | number;
+  browserCookieSync?: boolean;
   browserPort?: number;
   browserHeadless?: boolean;
   browserHideWindow?: boolean;
@@ -131,6 +132,9 @@ export function applyBrowserDefaultsFromConfig(
   }
   if (isUnset("browserCookieWait") && typeof browser.cookieSyncWaitMs === "number") {
     options.browserCookieWait = String(browser.cookieSyncWaitMs);
+  }
+  if (!attachRunningRequested && isUnset("browserCookieSync") && browser.cookieSync !== undefined) {
+    options.browserCookieSync = browser.cookieSync;
   }
   if (!attachRunningRequested && isUnset("browserHeadless") && browser.headless !== undefined) {
     options.browserHeadless = browser.headless;

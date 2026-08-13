@@ -69,6 +69,7 @@ export interface BrowserFlagOptions {
   browserAutoReattachInterval?: string;
   browserAutoReattachTimeout?: string;
   browserCookieWait?: string;
+  browserCookieSync?: boolean;
   browserNoCookieSync?: boolean;
   browserInlineCookiesFile?: string;
   browserCookieNames?: string;
@@ -181,7 +182,10 @@ export async function buildBrowserConfig(
     envFile: process.env.ORACLE_BROWSER_COOKIES_FILE,
     cwd: process.cwd(),
   });
-  if (inline?.source?.startsWith("home:") && options.browserNoCookieSync !== true) {
+  const chromeCookieSyncRequested =
+    options.browserNoCookieSync !== true &&
+    (options.browserCookieSync === true || options.browserManualLoginCookieSync === true);
+  if (inline?.source?.startsWith("home:") && chromeCookieSyncRequested) {
     inline = undefined;
   }
 
@@ -270,11 +274,13 @@ export async function buildBrowserConfig(
     cookieSyncWaitMs: options.browserCookieWait
       ? parseBrowserDuration(options.browserCookieWait, "--browser-cookie-wait", 0)
       : undefined,
-    cookieSync: options.browserNoCookieSync
-      ? false
-      : options.browserManualLoginCookieSync === true
-        ? true
-        : undefined,
+    cookieSync: inline?.cookies?.length
+      ? true
+      : options.browserNoCookieSync
+        ? false
+        : options.browserCookieSync === true || options.browserManualLoginCookieSync === true
+          ? true
+          : undefined,
     cookieNames,
     inlineCookies: inline?.cookies,
     inlineCookiesSource: inline?.source ?? null,
@@ -282,7 +288,7 @@ export async function buildBrowserConfig(
     keepBrowser: options.browserKeepBrowser ? true : undefined,
     manualLogin: options.browserManualLogin === undefined ? undefined : options.browserManualLogin,
     manualLoginProfileDir: options.browserManualLoginProfileDir ?? undefined,
-    manualLoginCookieSync: options.browserManualLoginCookieSync,
+    manualLoginCookieSync: inline?.cookies?.length ? true : options.browserManualLoginCookieSync,
     copyProfileSource: options.copyProfile ?? undefined,
     hideWindow: options.browserHideWindow ? true : undefined,
     desiredModel,
@@ -329,6 +335,7 @@ function validateAttachRunningOptions(
   const conflicts = [
     options.browserChromeProfile ? "--browser-chrome-profile" : null,
     options.browserCookiePath ? "--browser-cookie-path" : null,
+    options.browserCookieSync ? "--browser-cookie-sync" : null,
     options.browserNoCookieSync ? "--browser-no-cookie-sync" : null,
     options.browserHeadless ? "--browser-headless" : null,
     options.browserHideWindow ? "--browser-hide-window" : null,

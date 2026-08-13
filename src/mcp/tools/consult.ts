@@ -353,7 +353,9 @@ export function buildConsultBrowserConfig({
     ...configuredBrowser,
     url: configuredUrl,
     chatgptUrl: configuredUrl,
-    cookieSync: !manualLogin || configuredBrowser.manualLoginCookieSync === true,
+    cookieSync: manualLogin
+      ? configuredBrowser.manualLoginCookieSync === true
+      : configuredBrowser.cookieSync === true,
     headless: configuredBrowser.headless ?? false,
     hideWindow: configuredBrowser.hideWindow ?? false,
     keepBrowser: browserKeepBrowser ?? configuredBrowser.keepBrowser ?? false,

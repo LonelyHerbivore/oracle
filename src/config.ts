@@ -52,6 +52,8 @@ export interface BrowserConfigDefaults {
   autoReattachIntervalMs?: number;
   /** Time budget for each auto-reattach attempt. */
   autoReattachTimeoutMs?: number;
+  /** Copy cookies from a live Chrome profile into temporary automation profiles. */
+  cookieSync?: boolean;
   cookieSyncWaitMs?: number;
   headless?: boolean;
   hideWindow?: boolean;

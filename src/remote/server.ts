@@ -45,6 +45,7 @@ export interface RemoteServerOptions {
   logger?: (message: string) => void;
   manualLoginDefault?: boolean;
   manualLoginProfileDir?: string;
+  cookieSyncDefault?: boolean;
 }
 
 interface RemoteServerDeps {
@@ -272,13 +273,14 @@ export async function createRemoteServer(
       // open before the service forces `keepBrowser` for process lifetime.
       const clientRequestedKeepBrowser = payload.browserConfig?.keepBrowser === true;
 
-      // Remote runs always rely on the host's own Chrome profile; ignore any inline cookie transfer.
+      // Remote runs rely on the host's authentication policy; never accept cookie payloads from clients.
       if (payload.browserConfig) {
         payload.browserConfig.inlineCookies = null;
         payload.browserConfig.inlineCookiesSource = null;
-        payload.browserConfig.cookieSync = true;
+        payload.browserConfig.cookieSync = options.cookieSyncDefault === true;
       } else {
         payload.browserConfig = {} as typeof payload.browserConfig;
+        payload.browserConfig.cookieSync = options.cookieSyncDefault === true;
       }
 
       // Enforce manual-login profile when cookie sync is unavailable (e.g., Windows/WSL).
@@ -384,7 +386,11 @@ export async function createRemoteServer(
 export async function serveRemote(options: RemoteServerOptions = {}): Promise<void> {
   const manualProfileDir =
     options.manualLoginProfileDir ?? path.join(os.homedir(), ".oracle", "browser-profile");
-  const preferManualLogin = options.manualLoginDefault || process.platform === "win32" || isWsl();
+  const preferManualLogin =
+    options.manualLoginDefault ||
+    options.cookieSyncDefault !== true ||
+    process.platform === "win32" ||
+    isWsl();
   let cookies: CookieParam[] | null = null;
   let opened = false;
 
@@ -402,6 +408,9 @@ export async function serveRemote(options: RemoteServerOptions = {}): Promise<vo
   }
 
   if (!preferManualLogin) {
+    console.log(
+      "Warning: Chrome cookie copying can invalidate an active ChatGPT session when tokens rotate. Prefer the default dedicated manual-login profile when possible.",
+    );
     // Warm-up: ensure this host has a ChatGPT login before accepting runs.
     const result = await loadLocalChatgptCookies(console.log, CHATGPT_URL);
     cookies = result.cookies;

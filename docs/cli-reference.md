@@ -83,6 +83,7 @@ See [OpenAI / Azure / OpenRouter](openai-endpoints.md) and [OpenRouter](openrout
 | `--chatgpt-url <url>`                                                          | Target a ChatGPT workspace / project folder.                                                                                 |
 | `--browser-model-strategy <select\|current\|ignore>`                           | Control ChatGPT model picker.                                                                                                |
 | `--browser-manual-login`                                                       | Use persistent profile + manual login (no Keychain).                                                                         |
+| `--browser-cookie-sync`                                                        | Explicitly copy cookies from live Chrome; prefer manual login because token rotation can invalidate the live session.        |
 | `--browser-attach-running`                                                     | Attach to your already-running Chrome via DevTools.                                                                          |
 | `--browser-tab <ref>`                                                          | Reuse an existing tab (`current`, id, URL, title substring).                                                                 |
 | `--browser-thinking-time <light\|standard\|extended\|extra-high\|pro\|heavy>`  | Effort intensity; `pro` selects the Pro tier and fails closed if unconfirmed, other unmatched tiers keep the current effort. |

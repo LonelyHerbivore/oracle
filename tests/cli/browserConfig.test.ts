@@ -35,6 +35,19 @@ describe("buildBrowserConfig", () => {
     expect(config.cookieSync).toBe(true);
   });
 
+  test("requires explicit opt-in for ordinary Chrome cookie sync", async () => {
+    await expect(
+      buildBrowserConfig({ model: "gpt-5.5-pro", browserCookieSync: true }),
+    ).resolves.toMatchObject({ cookieSync: true });
+    await expect(
+      buildBrowserConfig({
+        model: "gpt-5.5-pro",
+        browserCookieSync: true,
+        browserNoCookieSync: true,
+      }),
+    ).resolves.toMatchObject({ cookieSync: false });
+  });
+
   test("honors explicit headless while keeping explicit false headful", async () => {
     await expect(
       buildBrowserConfig({ model: "gpt-5.5-pro", browserHeadless: true }),

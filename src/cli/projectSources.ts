@@ -113,9 +113,11 @@ export async function buildProjectSourcesBrowserConfig({
   const cookieSync =
     flagConfig.cookieSync === false
       ? false
-      : manualLogin
-        ? manualLoginCookieSync === true
-        : configuredBrowser.cookieSync;
+      : flagConfig.cookieSync === true
+        ? true
+        : manualLogin
+          ? manualLoginCookieSync === true
+          : configuredBrowser.cookieSync === true;
   return {
     ...configuredBrowser,
     ...flagConfig,
