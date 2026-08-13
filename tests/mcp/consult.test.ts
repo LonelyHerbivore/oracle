@@ -213,7 +213,7 @@ describe("summarizeModelRunsForConsult", () => {
 
   test("honors explicit cookie sync for ordinary MCP browser consults", () => {
     const config = buildConsultBrowserConfig({
-      userConfig: { browser: { cookieSync: true } },
+      userConfig: { browser: { cookieSync: true, manualLogin: false } },
       env: {},
       runModel: "gpt-5.5-pro",
       inputModel: "gpt-5.5-pro",
