@@ -348,6 +348,12 @@ export function buildConsultBrowserConfig({
     ? true
     : (configuredBrowser.manualLogin ?? process.platform === "win32");
   const configuredThinkingTime = normalizeThinkingTimeLevel(configuredBrowser.thinkingTime);
+  const normalizedInputModel = inputModel?.trim().toLowerCase();
+  const isCurrentProAlias =
+    normalizedInputModel === "gpt-5-pro" ||
+    normalizedInputModel === "gpt-5.1-pro" ||
+    normalizedInputModel === "gpt-5.2-pro" ||
+    normalizedInputModel === "gpt-5.4-pro";
 
   return {
     ...configuredBrowser,
@@ -363,7 +369,8 @@ export function buildConsultBrowserConfig({
     manualLoginProfileDir: manualLogin
       ? ((envProfileDir || configuredBrowser.manualLoginProfileDir) ?? null)
       : null,
-    thinkingTime: browserThinkingTime ?? configuredThinkingTime ?? undefined,
+    thinkingTime:
+      browserThinkingTime ?? configuredThinkingTime ?? (isCurrentProAlias ? "pro" : undefined),
     modelStrategy: browserModelStrategy ?? configuredBrowser.modelStrategy,
     researchMode: browserResearchMode ?? configuredBrowser.researchMode,
     archiveConversations: browserArchive ?? configuredBrowser.archiveConversations,

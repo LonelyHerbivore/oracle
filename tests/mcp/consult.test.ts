@@ -242,6 +242,33 @@ describe("summarizeModelRunsForConsult", () => {
     });
   });
 
+  test("keeps current Pro alias semantics after MCP model normalization", () => {
+    const config = buildConsultBrowserConfig({
+      userConfig: {},
+      env: {},
+      runModel: "gpt-5.6-sol",
+      inputModel: "gpt-5-pro",
+    });
+
+    expect(config).toMatchObject({
+      desiredModel: "GPT-5.6 Sol",
+      thinkingTime: "pro",
+    });
+  });
+
+  test("lets configured effort override the current Pro alias default", () => {
+    const config = buildConsultBrowserConfig({
+      userConfig: { browser: { thinkingTime: "extended" } },
+      env: {},
+      runModel: "gpt-5.6-sol",
+      inputModel: "gpt-5-pro",
+    });
+
+    expect(config).toMatchObject({
+      desiredModel: "GPT-5.6 Sol",
+      thinkingTime: "extended",
+    });
+  });
   test("lets explicit consult inputs override config defaults", () => {
     const config = buildConsultBrowserConfig({
       userConfig: {

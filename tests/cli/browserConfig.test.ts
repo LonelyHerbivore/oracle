@@ -83,21 +83,28 @@ describe("buildBrowserConfig", () => {
     },
   );
 
-  test.each(["gpt-5-pro", "gpt-5.1-pro", "gpt-5.2-pro", "gpt-5.4-pro", "gpt-5.5-pro"])(
-    "maps Pro browser alias %s to GPT-5.5 with Pro effort",
+  test.each(["gpt-5-pro", "gpt-5.1-pro", "gpt-5.2-pro", "gpt-5.4-pro"])(
+    "maps current Pro browser alias %s to GPT-5.6 Sol with Pro effort",
     async (model) => {
       await expect(buildBrowserConfig({ model })).resolves.toMatchObject({
-        desiredModel: "GPT-5.5",
+        desiredModel: "GPT-5.6 Sol",
         thinkingTime: "pro",
       });
     },
   );
 
-  test("lets an explicit effort override the Pro alias default", async () => {
+  test("keeps the explicit GPT-5.5 Pro alias on GPT-5.5", async () => {
+    await expect(buildBrowserConfig({ model: "gpt-5.5-pro" })).resolves.toMatchObject({
+      desiredModel: "GPT-5.5",
+      thinkingTime: "pro",
+    });
+  });
+
+  test("lets an explicit effort override the current Pro alias default", async () => {
     await expect(
       buildBrowserConfig({ model: "gpt-5.2-pro", browserThinkingTime: "extended" }),
     ).resolves.toMatchObject({
-      desiredModel: "GPT-5.5",
+      desiredModel: "GPT-5.6 Sol",
       thinkingTime: "extended",
     });
   });
@@ -321,7 +328,7 @@ describe("buildBrowserConfig", () => {
       model: "gpt-5.2-pro",
       browserModelLabel: "Instant",
     });
-    expect(config.desiredModel).toBe("GPT-5.5");
+    expect(config.desiredModel).toBe("GPT-5.6 Sol");
   });
 
   test("rejects invalid browser max concurrent tabs", async () => {
@@ -553,11 +560,11 @@ describe("resolveBrowserModelLabel", () => {
     expect(resolveBrowserModelLabel("gpt-5.5-pro", "gpt-5.5-pro")).toBe("GPT-5.5");
     expect(resolveBrowserModelLabel("gpt-5.5-instant", "gpt-5.5-instant")).toBe("GPT-5.5 Instant");
     expect(resolveBrowserModelLabel("gpt-5.5", "gpt-5.5")).toBe("Thinking 5.5");
-    expect(resolveBrowserModelLabel("gpt-5.4-pro", "gpt-5.4-pro")).toBe("GPT-5.5");
+    expect(resolveBrowserModelLabel("gpt-5.4-pro", "gpt-5.4-pro")).toBe("GPT-5.6 Sol");
     expect(resolveBrowserModelLabel("gpt-5.4", "gpt-5.4")).toBe("Thinking 5.4");
-    expect(resolveBrowserModelLabel("gpt-5-pro", "gpt-5-pro")).toBe("GPT-5.5");
-    expect(resolveBrowserModelLabel("gpt-5.2-pro", "gpt-5.2-pro")).toBe("GPT-5.5");
-    expect(resolveBrowserModelLabel("gpt-5.1-pro", "gpt-5.1-pro")).toBe("GPT-5.5");
+    expect(resolveBrowserModelLabel("gpt-5-pro", "gpt-5-pro")).toBe("GPT-5.6 Sol");
+    expect(resolveBrowserModelLabel("gpt-5.2-pro", "gpt-5.2-pro")).toBe("GPT-5.6 Sol");
+    expect(resolveBrowserModelLabel("gpt-5.1-pro", "gpt-5.1-pro")).toBe("GPT-5.6 Sol");
     expect(resolveBrowserModelLabel("GPT-5.1", "gpt-5.1")).toBe("GPT-5.2");
   });
 
@@ -570,7 +577,7 @@ describe("resolveBrowserModelLabel", () => {
   });
 
   test("supports undefined or whitespace-only input", () => {
-    expect(resolveBrowserModelLabel(undefined, "gpt-5.2-pro")).toBe("GPT-5.5");
+    expect(resolveBrowserModelLabel(undefined, "gpt-5.2-pro")).toBe("GPT-5.6 Sol");
     expect(resolveBrowserModelLabel("   ", "gpt-5.1")).toBe("GPT-5.2");
   });
 

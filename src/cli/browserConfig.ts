@@ -120,7 +120,7 @@ export function normalizeChatGptModelForBrowser(model: ModelName): ModelName {
     normalized === "gpt-5.2-pro" ||
     normalized === "gpt-5.4-pro"
   ) {
-    return "gpt-5.5-pro";
+    return "gpt-5.6-sol";
   }
 
   // Explicit model variants: keep as-is (they have their own browser labels)
@@ -168,9 +168,16 @@ export async function buildBrowserConfig(
     !isChatGptModel && normalizedOverride.length > 0 && normalizedOverride !== baseModel;
   const modelStrategy =
     normalizeBrowserModelStrategy(options.browserModelStrategy) ?? DEFAULT_MODEL_STRATEGY;
+  const isCurrentProAlias =
+    baseModel === "gpt-5-pro" ||
+    baseModel === "gpt-5.1-pro" ||
+    baseModel === "gpt-5.2-pro" ||
+    baseModel === "gpt-5.4-pro";
   const thinkingTime =
     normalizeThinkingTimeLevel(options.browserThinkingTime) ??
-    (modelStrategy === "select" && normalizedBrowserModel === "gpt-5.5-pro" ? "pro" : undefined);
+    (modelStrategy === "select" && (isCurrentProAlias || normalizedBrowserModel === "gpt-5.5-pro")
+      ? "pro"
+      : undefined);
   assertBrowserModelAvailable(options.model, modelStrategy);
   const cookieNames = parseCookieNames(
     options.browserCookieNames ?? process.env.ORACLE_BROWSER_COOKIE_NAMES,
