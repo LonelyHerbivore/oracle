@@ -7,6 +7,7 @@ import {
 } from "../constants.js";
 import { logDomFailure } from "../domDebug.js";
 import { buildClickDispatcher } from "./domEvents.js";
+import { BrowserAutomationError } from "../../oracle/errors.js";
 
 // Snapshot of the model-picker / thinking-effort subtree, captured at the moment
 // detection fails so a chip-not-found can be diagnosed without re-running with
@@ -32,7 +33,7 @@ type ThinkingTimeOutcome = (
     }
 ) & { modelKind?: string | null };
 
-export class ThinkingTierUnavailableError extends Error {
+export class ThinkingTierUnavailableError extends BrowserAutomationError {
   readonly requestedLevel: string;
   readonly requestedLabel: string;
   readonly optionLabel: string | null;
@@ -46,9 +47,15 @@ export class ThinkingTierUnavailableError extends Error {
     notice: string | null,
     confirmedTarget: string,
   ) {
-    super(
-      `Thinking time: ${optionLabel ?? requestedLabel} is unavailable on this account (${notice ?? "no reason given"}); refusing to submit without confirmed ${confirmedTarget}.`,
-    );
+    const message = `Thinking time: ${optionLabel ?? requestedLabel} is unavailable on this account (${notice ?? "no reason given"}); refusing to submit without confirmed ${confirmedTarget}.`;
+    super(message, {
+      stage: "thinking-tier-unavailable",
+      requestedLevel,
+      requestedLabel,
+      optionLabel,
+      notice,
+      confirmedTarget,
+    });
     this.name = "ThinkingTierUnavailableError";
     this.requestedLevel = requestedLevel;
     this.requestedLabel = requestedLabel;

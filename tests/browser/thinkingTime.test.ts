@@ -3463,6 +3463,7 @@ describe("unified Intelligence picker with Advanced -> Effort submenu", () => {
     await expect(strictSelection).rejects.toBeInstanceOf(ThinkingTierUnavailableError);
     await expect(strictSelection).rejects.toMatchObject({
       name: "ThinkingTierUnavailableError",
+      category: "browser-automation",
       message:
         "Thinking time: Pro is unavailable on this account (Limit reached. Try again after Aug 16, 2026.); refusing to submit without confirmed Pro.",
       requestedLevel: "pro",
@@ -3470,6 +3471,14 @@ describe("unified Intelligence picker with Advanced -> Effort submenu", () => {
       optionLabel: "Pro",
       notice: "Limit reached. Try again after Aug 16, 2026.",
       confirmedTarget: "Pro",
+      details: {
+        stage: "thinking-tier-unavailable",
+        requestedLevel: "pro",
+        requestedLabel: "Pro",
+        optionLabel: "Pro",
+        notice: "Limit reached. Try again after Aug 16, 2026.",
+        confirmedTarget: "Pro",
+      },
     });
 
     const logs: string[] = [];
