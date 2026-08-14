@@ -109,6 +109,18 @@ describe("buildBrowserConfig", () => {
     });
   });
 
+  test("preserves Pro effort after the CLI normalizes the requested alias", async () => {
+    await expect(
+      buildBrowserConfig({
+        model: "gpt-5.6-sol",
+        browserRequestedModel: "gpt-5-pro",
+      }),
+    ).resolves.toMatchObject({
+      desiredModel: "GPT-5.6 Sol",
+      thinkingTime: "pro",
+    });
+  });
+
   test("keeps current-model selection available for retired base aliases", async () => {
     await expect(
       buildBrowserConfig({ model: "gpt-5.2", browserModelStrategy: "current" }),

@@ -22,6 +22,12 @@ const DEFAULT_BROWSER_ATTACHMENT_TIMEOUT_MS = 45_000;
 const DEFAULT_BROWSER_RECHECK_TIMEOUT_MS = 120_000;
 const DEFAULT_BROWSER_AUTO_REATTACH_TIMEOUT_MS = 120_000;
 const DEFAULT_CHROME_PROFILE = "Default";
+const CURRENT_CHATGPT_PRO_ALIASES = new Set([
+  "gpt-5-pro",
+  "gpt-5.1-pro",
+  "gpt-5.2-pro",
+  "gpt-5.4-pro",
+]);
 
 // Ordered array: most specific models first to ensure correct selection.
 // The browser label is passed to the model picker which fuzzy-matches against ChatGPT's UI.
@@ -87,6 +93,8 @@ export interface BrowserFlagOptions {
   browserResearch?: BrowserResearchMode;
   browserArchive?: BrowserArchiveMode;
   browserModelLabel?: string;
+  /** Original model request before browser alias normalization. */
+  browserRequestedModel?: ModelName;
   browserModelStrategy?: BrowserModelStrategy;
   browserAllowCookieErrors?: boolean;
   remoteChrome?: string;
@@ -114,12 +122,7 @@ export function normalizeChatGptModelForBrowser(model: ModelName): ModelName {
   }
 
   // Pro variants: resolve to the latest Pro model in ChatGPT.
-  if (
-    normalized === "gpt-5-pro" ||
-    normalized === "gpt-5.1-pro" ||
-    normalized === "gpt-5.2-pro" ||
-    normalized === "gpt-5.4-pro"
-  ) {
+  if (isCurrentChatGptProAlias(normalized)) {
     return "gpt-5.6-sol";
   }
 
@@ -134,6 +137,27 @@ export function normalizeChatGptModelForBrowser(model: ModelName): ModelName {
   }
 
   return model;
+}
+
+export function isCurrentChatGptProAlias(model: string | undefined): boolean {
+  return CURRENT_CHATGPT_PRO_ALIASES.has(model?.trim().toLowerCase() ?? "");
+}
+
+export function resolveDefaultBrowserThinkingTime({
+  model,
+  requestedModel,
+  modelStrategy,
+}: {
+  model: string;
+  requestedModel?: string;
+  modelStrategy?: BrowserModelStrategy;
+}): ThinkingTimeLevel | undefined {
+  const strategy = normalizeBrowserModelStrategy(modelStrategy) ?? DEFAULT_MODEL_STRATEGY;
+  if (strategy !== "select") return undefined;
+  const normalizedModel = normalizeChatGptModelForBrowser(model as ModelName);
+  return isCurrentChatGptProAlias(requestedModel ?? model) || normalizedModel === "gpt-5.5-pro"
+    ? "pro"
+    : undefined;
 }
 
 export async function buildBrowserConfig(
@@ -163,21 +187,17 @@ export async function buildBrowserConfig(
   const normalizedOverride = desiredModelOverride?.toLowerCase() ?? "";
   const baseModel = options.model.toLowerCase();
   const isChatGptModel = baseModel.startsWith("gpt-") && !baseModel.includes("codex");
-  const normalizedBrowserModel = normalizeChatGptModelForBrowser(options.model);
   const shouldUseOverride =
     !isChatGptModel && normalizedOverride.length > 0 && normalizedOverride !== baseModel;
   const modelStrategy =
     normalizeBrowserModelStrategy(options.browserModelStrategy) ?? DEFAULT_MODEL_STRATEGY;
-  const isCurrentProAlias =
-    baseModel === "gpt-5-pro" ||
-    baseModel === "gpt-5.1-pro" ||
-    baseModel === "gpt-5.2-pro" ||
-    baseModel === "gpt-5.4-pro";
   const thinkingTime =
     normalizeThinkingTimeLevel(options.browserThinkingTime) ??
-    (modelStrategy === "select" && (isCurrentProAlias || normalizedBrowserModel === "gpt-5.5-pro")
-      ? "pro"
-      : undefined);
+    resolveDefaultBrowserThinkingTime({
+      model: options.model,
+      requestedModel: options.browserRequestedModel,
+      modelStrategy,
+    });
   assertBrowserModelAvailable(options.model, modelStrategy);
   const cookieNames = parseCookieNames(
     options.browserCookieNames ?? process.env.ORACLE_BROWSER_COOKIE_NAMES,

@@ -2163,6 +2163,7 @@ async function runRootCommand(options: CliOptions): Promise<void> {
       ...options,
       remoteHost: remoteHost ?? undefined,
       model: activeModel,
+      browserRequestedModel: cliModelArg,
       browserModelLabel: resolveBrowserModelLabel(cliModelArg, activeModel),
     });
     return resolvedOptions.browserResumeConversationUrl
