@@ -16,6 +16,12 @@ type ThinkingTimePickerDiagnostic = Record<string, unknown>;
 type ThinkingTimeOutcome = (
   | { status: "already-selected"; label?: string | null }
   | { status: "switched"; label?: string | null }
+  | {
+      status: "option-disabled";
+      label?: string | null;
+      notice?: string | null;
+      diagnostic?: ThinkingTimePickerDiagnostic;
+    }
   | { status: "chip-not-found"; diagnostic?: ThinkingTimePickerDiagnostic }
   | { status: "menu-not-found"; diagnostic?: ThinkingTimePickerDiagnostic }
   | { status: "option-not-found"; diagnostic?: ThinkingTimePickerDiagnostic }
@@ -25,6 +31,42 @@ type ThinkingTimeOutcome = (
       diagnostic?: ThinkingTimePickerDiagnostic;
     }
 ) & { modelKind?: string | null };
+
+export class ThinkingTierUnavailableError extends Error {
+  readonly requestedLevel: string;
+  readonly requestedLabel: string;
+  readonly optionLabel: string | null;
+  readonly notice: string | null;
+  readonly confirmedTarget: string;
+
+  constructor(
+    requestedLevel: string,
+    requestedLabel: string,
+    optionLabel: string | null,
+    notice: string | null,
+    confirmedTarget: string,
+  ) {
+    super(
+      `Thinking time: ${optionLabel ?? requestedLabel} is unavailable on this account (${notice ?? "no reason given"}); refusing to submit without confirmed ${confirmedTarget}.`,
+    );
+    this.name = "ThinkingTierUnavailableError";
+    this.requestedLevel = requestedLevel;
+    this.requestedLabel = requestedLabel;
+    this.optionLabel = optionLabel;
+    this.notice = notice;
+    this.confirmedTarget = confirmedTarget;
+  }
+}
+
+function confirmedThinkingTarget(
+  level: ThinkingTimeLevel,
+  capitalizedLevel: string,
+  targetModelKind: "pro" | "thinking" | "instant" | null,
+  observedModelKind: string | null | undefined,
+): string {
+  const strictModelKind = targetModelKind ?? observedModelKind;
+  return level === "pro" ? "Pro" : strictModelKind === "pro" ? "Pro Extended" : capitalizedLevel;
+}
 
 const BROWSER_THINKING_LOG_PREFIX = "[browser] Thinking time:";
 
@@ -79,6 +121,28 @@ export async function ensureThinkingTime(
     case "switched":
       logger(formatBrowserThinkingLog(result.label ?? capitalizedLevel));
       return;
+    case "option-disabled": {
+      await logDomFailure(Runtime, logger, "thinking-option-disabled");
+      logPickerDiagnostic(result, logger);
+      if (strictProEffort) {
+        throw new ThinkingTierUnavailableError(
+          level,
+          capitalizedLevel,
+          result.label ?? null,
+          result.notice ?? null,
+          confirmedThinkingTarget(level, capitalizedLevel, targetModelKind, observedModelKind),
+        );
+      }
+      // A non-strict caller goes on to submit, so this log must not borrow the
+      // strict error's "refusing to submit" wording: the request really is sent,
+      // at whatever effort ChatGPT already had selected.
+      logger(
+        formatBrowserThinkingLog(
+          `${result.label ?? capitalizedLevel} is unavailable on this account (${result.notice ?? "no reason given"}); keeping the effort already selected in ChatGPT.`,
+        ),
+      );
+      return;
+    }
     case "chip-not-found":
     case "menu-not-found":
     case "option-not-found":
@@ -148,6 +212,13 @@ export async function ensureThinkingTimeIfAvailable(
       case "switched":
         logger(formatBrowserThinkingLog(result.label ?? capitalizedLevel));
         return true;
+      case "option-disabled":
+        logger(
+          formatBrowserThinkingLog(
+            `${result.label ?? capitalizedLevel} is unavailable on this account (${result.notice ?? "no reason given"}); keeping the effort already selected in ChatGPT.`,
+          ),
+        );
+        return false;
       case "chip-not-found":
       case "menu-not-found":
       case "option-not-found":
@@ -359,6 +430,21 @@ function buildThinkingTimeExpression(
         .replace(/\\s+/g, ' ')
         .trim()
         .slice(0, maxLength);
+    const isOptionDisabled = (node) => {
+      if (!node || typeof node.getAttribute !== 'function') return false;
+      // data-disabled is Radix's valueless-presence convention, but an explicit
+      // "false" must not read as disabled: that would refuse a perfectly usable
+      // tier and report it as unavailable.
+      const dataDisabled = node.getAttribute('data-disabled');
+      const dataDisabledOn = dataDisabled !== null && String(dataDisabled).toLowerCase() !== 'false';
+      return (
+        node.getAttribute('aria-disabled') === 'true' ||
+        dataDisabledOn ||
+        (node.getAttribute('data-state') || '').toLowerCase() === 'disabled' ||
+        Boolean(node.disabled) ||
+        node.getAttribute('disabled') !== null
+      );
+    };
     const describeNode = (el) => {
       if (!el || typeof el.getAttribute !== 'function') return null;
       let rect = null;
@@ -381,7 +467,10 @@ function buildThinkingTimeExpression(
         ariaChecked: el.getAttribute('aria-checked'),
         ariaSelected: el.getAttribute('aria-selected'),
         ariaHaspopup: el.getAttribute('aria-haspopup'),
+        ariaDisabled: el.getAttribute('aria-disabled'),
+        dataDisabled: el.getAttribute('data-disabled'),
         dataState: el.getAttribute('data-state'),
+        disabled: isOptionDisabled(el),
         text: redactDiagnosticText(el.textContent, 80),
         rect,
       };
@@ -657,6 +746,77 @@ function buildThinkingTimeExpression(
       }
       return matchesLevel(normalizedLabel);
     };
+    const nonEmptyNotice = (value) => {
+      const text = redactDiagnosticText(value, 160);
+      return text || null;
+    };
+    // The notice must be ROW-OWNED, and preferably this hover's own.
+    //
+    // NOTE: no backticks in this comment — it lives inside the injected template
+    // literal, where a backtick would terminate the string.
+    //
+    // A document-wide role=tooltip scan is what this must never become: novelty is
+    // not causality, and an unrelated control with an armed open-delay can mount its
+    // tooltip inside this hover's window. Every pass below is anchored on the row.
+    //
+    // Preference order, strongest provenance first:
+    //   1. an id this hover ADDED whose target is role=tooltip — Radix keeps an
+    //      application-supplied description and APPENDS its tooltip id when opening,
+    //      so the delta is what separates the real notice from a permanent blurb;
+    //   2. any other id this hover added;
+    //   3. an already-associated role=tooltip target, for a tooltip that was open
+    //      before the probe arrived;
+    //   4. the row's static title, only once the poll has expired.
+    //
+    // Passes 3 and 4 are row-owned but NOT causal: a page that permanently points a
+    // disabled row at generic role=tooltip help, or gives it a generic title, will
+    // have that text reported. That is accepted deliberately — the value is an opaque
+    // notice for a human or a caller to interpret, not a parsed reset time — and the
+    // verified live target has neither at rest.
+    const describedIds = (option) =>
+      (option?.getAttribute?.('aria-describedby') || '').split(/\\s+/).filter(Boolean);
+    const isTooltipNode = (node) => node?.getAttribute?.('role') === 'tooltip';
+    const readDisabledNotice = (option, priorIds, allowTitle) => {
+      const ids = describedIds(option);
+      const prior = priorIds instanceof Set ? priorIds : new Set();
+      const fresh = ids.filter((id) => !prior.has(id));
+      for (const pass of [
+        fresh.filter((id) => isTooltipNode(document.getElementById?.(id))),
+        fresh,
+        ids.filter((id) => isTooltipNode(document.getElementById?.(id))),
+      ]) {
+        for (const id of pass) {
+          const notice = nonEmptyNotice(document.getElementById?.(id)?.textContent);
+          if (notice) return notice;
+        }
+      }
+      if (!allowTitle) return null;
+      return nonEmptyNotice(option?.getAttribute?.('title'));
+    };
+    const waitForDisabledNotice = async (option, priorIds) => {
+      const deadline = performance.now() + 400;
+      while (performance.now() < deadline) {
+        const notice = readDisabledNotice(option, priorIds, false);
+        if (notice) return notice;
+        await sleep(50);
+      }
+      // Only now may a static title speak: the association had its full window.
+      return readDisabledNotice(option, priorIds, true);
+    };
+    // Opening a tooltip stacks another Radix dismissable layer over the menu, and
+    // the topmost layer eats the Escape. One blind Escape therefore leaves the
+    // effort menu open, which matters for the non-strict caller that goes on to
+    // submit. Dismiss, let the layer unmount, and only Escape again while a menu is
+    // still there — never two unconditional Escapes, which could close an unrelated
+    // outer surface.
+    const closeMenusAfterTooltip = async () => {
+      closeOpenMenus();
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        await sleep(50);
+        if (!Array.from(document.querySelectorAll(MENU_CONTAINER_SELECTOR)).some(isVisible)) return;
+        closeOpenMenus();
+      }
+    };
     const selectAndVerify = async (trigger, findOption, modelKindOverride = null) => {
       const triggerModelKind =
         modelKindOverride ||
@@ -682,6 +842,22 @@ function buildThinkingTimeExpression(
       }
       if (!option) return failure('option-not-found', { modelKind: triggerModelKind });
       const label = option.textContent?.trim?.() || null;
+      if (isOptionDisabled(option)) {
+        // Captured BEFORE the hover: the ids already here describe the row for other
+        // reasons and cannot be this hover's reason.
+        const priorIds = new Set(describedIds(option));
+        dispatchHoverSequence(option);
+        const notice = await waitForDisabledNotice(option, priorIds);
+        const result = failure('option-disabled', {
+          // The label is page text that reaches logs and diagnostics, so it is
+          // redacted like every other reported string.
+          label: redactDiagnosticText(option.textContent, 80) || null,
+          notice,
+          modelKind: triggerModelKind,
+        });
+        await closeMenusAfterTooltip();
+        return result;
+      }
       if (optionIsSelected(option)) {
         closeOpenMenus();
         return { status: 'already-selected', label };
