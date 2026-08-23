@@ -271,6 +271,18 @@ describe("prompt composer attachment expressions", () => {
     expect(evaluateAttachmentReadyExpression([expectedName], document)).toBe(true);
   });
 
+  test("attachment ready check recognizes renamed files only exposed by removal labels", () => {
+    const document = new FakeDocument([
+      new FakeElement("div", { "data-testid": "unified-composer" }, [
+        new FakeElement("div", { "data-testid": "attachment-chip" }, [
+          new FakeElement("button", { "aria-label": "Remove file 1: 01(5).jpg" }),
+        ]),
+      ]),
+    ]);
+
+    expect(evaluateAttachmentReadyExpression(["01.jpg"], document)).toBe(true);
+  });
+
   test.each(["010.jpg", "02(5).jpg"])(
     "attachment ready check does not match 01.jpg to %s",
     (actualName) => {

@@ -30,6 +30,7 @@ describe("collision-renamed attachment names", () => {
     ["document.md", "document(20260818-145702).md"],
     ["document.md", "document.md"],
     ["a+b.jpg", "a+b(2).jpg"],
+    ["01.jpg", "Remove file 1: 01(5).jpg"],
   ])("matches %s to %s", (expectedName, actualName) => {
     expect(buildCollisionPattern(expectedName)?.test(actualName) ?? false).toBe(true);
   });
@@ -37,6 +38,9 @@ describe("collision-renamed attachment names", () => {
   test.each([
     ["01.jpg", "010.jpg"],
     ["01.jpg", "02(5).jpg"],
+    ["01.jpg", "prefix01(5).jpg"],
+    ["01.jpg", "01(5).jpg.exe"],
+    ["01.jpg", "Remove file 1: 010(5).jpg"],
   ])("does not match %s to %s", (expectedName, actualName) => {
     expect(buildCollisionPattern(expectedName)?.test(actualName) ?? false).toBe(false);
   });
@@ -52,6 +56,37 @@ describe("collision-renamed attachment names", () => {
             uploading: false,
             filesAttached: true,
             attachedNames: ["01(5).jpg"],
+            inputNames: [],
+            fileCount: 0,
+          },
+        },
+      }),
+    } as unknown as ChromeClient["Runtime"];
+
+    try {
+      const promise = waitForAttachmentCompletion(runtime, 3_000, ["01.jpg"]);
+      const resolved = promise.then(
+        () => true,
+        () => false,
+      );
+      await vi.advanceTimersByTimeAsync(4_000);
+      expect(await resolved).toBe(true);
+    } finally {
+      useRealTime();
+    }
+  });
+
+  test("waitForAttachmentCompletion recognizes renamed files in removal labels", async () => {
+    useFakeTime();
+
+    const runtime = {
+      evaluate: vi.fn().mockResolvedValue({
+        result: {
+          value: {
+            state: "ready",
+            uploading: false,
+            filesAttached: true,
+            attachedNames: ["Remove file 1: 01(5).jpg"],
             inputNames: [],
             fileCount: 0,
           },
