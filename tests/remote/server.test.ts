@@ -155,7 +155,7 @@ describe("remote browser service", () => {
         location: "primary",
         files: [
           { fileName: "a b.txt", content: "primary with space", stagedName: "a_b.txt" },
-          { fileName: "a_b.txt", content: "primary with underscore", stagedName: "a_b.txt" },
+          { fileName: "a_b.txt", content: "primary with underscore", stagedName: "a_b-2.txt" },
         ],
       });
     },
@@ -168,7 +168,7 @@ describe("remote browser service", () => {
         location: "fallback",
         files: [
           { fileName: "a b.txt", content: "fallback with space", stagedName: "a_b.txt" },
-          { fileName: "a_b.txt", content: "fallback with underscore", stagedName: "a_b.txt" },
+          { fileName: "a_b.txt", content: "fallback with underscore", stagedName: "a_b-2.txt" },
         ],
       });
     },
@@ -182,6 +182,20 @@ describe("remote browser service", () => {
         files: [
           { fileName: "alpha.txt", content: "first", stagedName: "alpha.txt" },
           { fileName: "beta.md", content: "second", stagedName: "beta.md" },
+        ],
+      });
+    },
+  );
+
+  test.skipIf(!CAN_LISTEN_LOCALHOST)(
+    "keeps naturally suffixed filenames when allocating sanitized collision names",
+    async () => {
+      await expectRemoteAttachmentStaging({
+        location: "primary",
+        files: [
+          { fileName: "a b.txt", content: "with space", stagedName: "a_b.txt" },
+          { fileName: "a_b.txt", content: "with underscore", stagedName: "a_b-3.txt" },
+          { fileName: "a_b-2.txt", content: "natural suffix", stagedName: "a_b-2.txt" },
         ],
       });
     },
@@ -520,10 +534,10 @@ async function expectRemoteAttachmentStaging({
         }
 
         const stagedPaths = stagedAttachments.map((attachment) => attachment.path);
+        const stagedBasenames = stagedPaths.map((stagedPath) => path.basename(stagedPath));
         expect(new Set(stagedPaths).size).toBe(files.length);
-        expect(stagedAttachments.map((attachment) => path.basename(attachment.path))).toEqual(
-          files.map((file) => file.stagedName),
-        );
+        expect(new Set(stagedBasenames).size).toBe(files.length);
+        expect(stagedBasenames).toEqual(files.map((file) => file.stagedName));
         expect(stagedAttachments.map((attachment) => attachment.displayPath)).toEqual(
           files.map((file) => file.fileName),
         );

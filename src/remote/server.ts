@@ -14,6 +14,7 @@ import type { BrowserRunResult } from "../browserMode.js";
 import type {
   RemoteArtifactCapabilities,
   RemoteArtifactDescriptor,
+  RemoteAttachmentPayload,
   RemoteRunPayload,
   RemoteRunEvent,
 } from "./types.js";
@@ -227,11 +228,9 @@ export async function createRemoteServer(
       | undefined;
     try {
       const attachmentsPayload = Array.isArray(payload.attachments) ? payload.attachments : [];
+      const attachmentNames = allocateUniqueAttachmentNames(attachmentsPayload, "attachment");
       for (const [index, attachment] of attachmentsPayload.entries()) {
-        const safeName = sanitizeName(attachment.fileName ?? `attachment-${index + 1}`);
-        const stagingDir = path.join(attachmentDir, String(index));
-        await mkdir(stagingDir, { recursive: true });
-        const filePath = path.join(stagingDir, safeName);
+        const filePath = path.join(attachmentDir, attachmentNames[index]!);
         await writeFile(filePath, Buffer.from(attachment.contentBase64, "base64"));
         attachments.push({
           path: filePath,
@@ -247,11 +246,9 @@ export async function createRemoteServer(
         const fallbackPayload = Array.isArray(payload.fallbackSubmission.attachments)
           ? payload.fallbackSubmission.attachments
           : [];
+        const fallbackNames = allocateUniqueAttachmentNames(fallbackPayload, "fallback-attachment");
         for (const [index, attachment] of fallbackPayload.entries()) {
-          const safeName = sanitizeName(attachment.fileName ?? `fallback-attachment-${index + 1}`);
-          const stagingDir = path.join(fallbackAttachmentDir, String(index));
-          await mkdir(stagingDir, { recursive: true });
-          const filePath = path.join(stagingDir, safeName);
+          const filePath = path.join(fallbackAttachmentDir, fallbackNames[index]!);
           await writeFile(filePath, Buffer.from(attachment.contentBase64, "base64"));
           fallbackAttachments.push({
             path: filePath,
@@ -725,6 +722,34 @@ async function readRequestBody(req: http.IncomingMessage): Promise<string> {
 
 function sanitizeName(raw: string): string {
   return raw.replace(/[^a-zA-Z0-9._-]/g, "_");
+}
+
+function allocateUniqueAttachmentNames(
+  attachments: RemoteAttachmentPayload[],
+  fallbackPrefix: string,
+): string[] {
+  const originalNames = attachments.map((attachment, index) =>
+    sanitizeName(attachment.fileName ?? `${fallbackPrefix}-${index + 1}`),
+  );
+  const reservedNames = new Set(originalNames);
+  const allocatedNames = new Set<string>();
+
+  return originalNames.map((originalName) => {
+    if (!allocatedNames.has(originalName)) {
+      allocatedNames.add(originalName);
+      return originalName;
+    }
+
+    const { name, ext } = path.parse(originalName);
+    let suffix = 2;
+    let candidate = `${name}-${suffix}${ext}`;
+    while (reservedNames.has(candidate) || allocatedNames.has(candidate)) {
+      suffix += 1;
+      candidate = `${name}-${suffix}${ext}`;
+    }
+    allocatedNames.add(candidate);
+    return candidate;
+  });
 }
 
 function sanitizeResult(
