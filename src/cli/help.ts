@@ -84,6 +84,7 @@ function renderHelpFooter(program: Command, colors: HelpColors): string {
     `${colors.bullet("•")} Need hidden flags? Run ${colors.accent(`${program.name()} --help --verbose`)} to list search/token/browser overrides.`,
     `${colors.bullet("•")} If any Oracle session is already running, do not start new API runs. Attach to the existing browser session instead; only trigger API calls when you explicitly mean to.`,
     `${colors.bullet("•")} Duplicate prompt guard: if the same prompt is already running, new runs are blocked unless you pass ${colors.accent("--force")}—prefer reattaching instead of spawning duplicates.`,
+    `${colors.bullet("•")} Browser attachments: before invoking Oracle, MUST rename every uploaded file to a unique descriptive basename using ${colors.accent("oracle-<task>-<YYYYMMDD-HHmmss>-<NN>.<ext>")}. Never use duplicate, short, or generic names such as ${colors.accent("01.jpg")}, ${colors.accent("a.txt")}, or ${colors.accent("document.md")}; this avoids ChatGPT collision renames that can cause attachment-readiness timeouts.`,
   ].join("\n");
 
   const formatExample = (command: string, description: string): string =>
